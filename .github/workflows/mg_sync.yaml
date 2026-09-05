@@ -1,0 +1,38 @@
+name: Sync with upstream
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Sync from upstream (preserve workflows)
+        run: |
+          git config --global user.email "gha@github.com"
+          git config --global user.name "GitHub Actions"
+      
+          git remote add upstream https://github.com/AykutSarac/jsoncrack.com.git || true
+          git fetch upstream
+          
+          mkdir -p /tmp/workflows
+          cp .github/workflows/mg_sync.yaml /tmp/workflows/mg_sync.yaml
+          cp .github/workflows/mg_build.yaml /tmp/workflows/mg_build.yaml
+      
+          git checkout main
+          git reset --hard upstream/main
+      
+          cp -rf /tmp/workflows/* .github/workflows/
+      
+          git add .github/workflows
+          git commit -m "Restore custom workflows after sync" || echo "No changes"
+      
+          git push origin main --force
